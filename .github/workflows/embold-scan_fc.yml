@@ -1,0 +1,47 @@
+name: Embold Code Quality Scan (Fragment)
+
+on:
+  # Included for context on when the scan should run
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  embold-scan_fc:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out your repository code (MANDATORY for scan to work)
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Download and extract the Embold scanner
+      - name: Download and Extract Scanner
+        run: |
+          curl https://v1.embold.io/nfs/CLI/browserstack-codequality-scanner.tar.gz -o browserstack-codequality-scanner-archive.tar.gz
+          tar xvf browserstack-codequality-scanner-archive.tar.gz
+
+      # Step 3: Download the repository configuration file
+      - name: Download Repository Configuration
+        run: |
+          curl --silent --location --request GET "http://18.184.13.138:3089/api/v1/repositories/d558ef16b97057a2eb2bfbbd0b43a4fa/scans/config/download" --header "Authorization: Bearer ${{ secrets.EMBOLD_SCAN_TOKEN_FC }}" -o repository-configuration.json
+
+      # Step 4: Run the Embold analysis scanner
+      - name: Run Embold Scanner
+        continue-on-error: true
+        env:
+          EMBOLD_TOKEN: ${{ secrets.EMBOLD_SCAN_TOKEN_FC }}
+        run: |
+          ./browserstack-codequality-scanner/bin/embold-scanner analyse \
+            -u http://18.184.13.138:3089 \
+            -t $EMBOLD_TOKEN \
+            -r d558ef16b97057a2eb2bfbbd0b43a4fa \
+            -b . \
+            -d ./embold-data \
+            -c ./repository-configuration.json \
+            -l ./embold-log \
+            -sh ./embold-scanner-home
